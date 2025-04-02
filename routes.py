@@ -9,16 +9,26 @@ jwt = JWTManager(app)
 @app.route('/register', methods=['POST'])
 def register_user():
     data = request.get_json()
-    hashed_password = generate_password_hash(data['password'])
-    new_user = User(
-        name=data['name'],
-        email=data['email'],
-        password_hash=hashed_password,
-        role=data.get('role', 'adopter')
-    )
-    db.session.add(new_user)
-    db.session.commit()
-    return jsonify({'message': 'User registered successfully!'})
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+        
+    if not all(k in data for k in ['name', 'email', 'password']):
+        return jsonify({'error': 'Missing required fields'}), 400
+        
+    try:
+        hashed_password = generate_password_hash(data['password'])
+        new_user = User(
+            name=data['name'],
+            email=data['email'],
+            password_hash=hashed_password,
+            role=data.get('role', 'adopter')
+        )
+        db.session.add(new_user)
+        db.session.commit()
+        return jsonify({'message': 'User registered successfully!'}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/login', methods=['POST'])
 def login():
