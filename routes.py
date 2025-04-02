@@ -1,4 +1,4 @@
-from flask import request, jsonify
+from flask import request, jsonify, send_from_directory
 from app import app, db
 from models import User, Pet, Notification, Adoption, Service, Booking
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -54,16 +54,65 @@ def get_pets():
 @jwt_required()
 def add_pet():
     current_user = get_jwt_identity()
-    data = request.get_json()
-    new_pet = Pet(
-        name=data['name'],
-        species=data['species'],
-        owner_id=current_user,  # assuming owner_id corresponds to the user ID
-        description=data.get('description'),
-    )
-    db.session.add(new_pet)
-    db.session.commit()
-    return jsonify({'message': 'Pet added successfully!'})
+    
+    # Check for image file
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image provided'}), 400
+    
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({'error': 'No selected image'}), 400
+    
+    if file and allowed_file(file.filename):
+        try:
+            # Generate unique filename
+            filename = secure_filename(file.filename)
+            unique_filename = f"pet_{current_user}_{int(time.time())}_{filename}"
+            save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+            
+            # Ensure directory exists
+            os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+            
+            # Save file
+            file.save(save_path)
+            
+            # Generate full URL
+            image_url = f"{app.config['BASE_URL']}/static/pet_images/{unique_filename}"
+            
+            # Get other form data
+            data = request.form
+            new_pet = Pet(
+                name=data.get('name'),
+                species=data.get('species'),
+                breed=data.get('breed'),
+                age=data.get('age', type=int),
+                size=data.get('size'),
+                description=data.get('description'),
+                image_url=image_url,
+                owner_id=current_user,
+                available_for_adoption=data.get('available', True, type=bool)
+            )
+            
+            db.session.add(new_pet)
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Pet added successfully!',
+                'pet': {
+                    'id': new_pet.id,
+                    'image_url': new_pet.image_url,
+                    # Include other fields as needed
+                }
+            }), 201
+            
+        except Exception as e:
+            db.session.rollback()
+            # Clean up the saved file if there was an error
+            if os.path.exists(save_path):
+                os.remove(save_path)
+            return jsonify({'error': str(e)}), 500
+    
+    return jsonify({'error': 'Invalid file type'}), 400
 
 @app.route('/pets/<int:pet_id>', methods=['PUT'])
 @jwt_required()
@@ -158,3 +207,6 @@ def notify_user():
     db.session.add(new_notification)
     db.session.commit()
     return jsonify({'message': 'Notification sent!'})
+@app.route('/static/pet_images/<filename>')
+def serve_pet_image(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)

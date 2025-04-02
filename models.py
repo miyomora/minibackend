@@ -1,4 +1,5 @@
 from app import db
+from datetime import datetime
 
 # User Model
 class User(db.Model):
@@ -24,11 +25,13 @@ class Pet(db.Model):
     species = db.Column(db.String(50), nullable=False)
     breed = db.Column(db.String(50), nullable=True)
     age = db.Column(db.Integer, nullable=True)
-    size = db.Column(db.String(20), nullable=True)  # Example: Small, Medium, Large
+    size = db.Column(db.String(20), nullable=True)
     description = db.Column(db.Text, nullable=True)
+    image_url = db.Column(db.String(512), nullable=True)  # Full URL to the image
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     available_for_adoption = db.Column(db.Boolean, default=True)
-
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
     adoption_requests = db.relationship('Adoption', backref='pet', lazy=True)
 
 
