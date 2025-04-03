@@ -2,7 +2,7 @@ from flask import request, jsonify
 from app import app, db
 from models import User, Pet
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_jwt_extended import JWTManager, create_access_token ,jwt_required, get_jwt_identity
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 
 jwt = JWTManager(app)
 
@@ -34,12 +34,15 @@ def register_user():
 def login():
     data = request.get_json()
     user = User.query.filter_by(email=data['email']).first()
+    
     if user and check_password_hash(user.password_hash, data['password']):
-        access_token = create_access_token(identity=user.id)
+        access_token = create_access_token(identity=str(user.id))
         return jsonify({'token': access_token})
+    
     return jsonify({'message': 'Invalid credentials'}), 401
 
 @app.route('/pets', methods=['POST'])
+@jwt_required()
 def add_pet():
     data = request.get_json()
 
@@ -82,3 +85,19 @@ def get_pets():
         for pet in pets
     ]
     return jsonify(pets_data), 200
+
+@app.route('/pets/<int:pet_id>', methods=['DELETE'])
+@jwt_required()
+def delete_pet(pet_id):
+    pet = Pet.query.get(pet_id)
+
+    if not pet:
+        return jsonify({'error': 'Pet not found'}), 404
+
+    try:
+        db.session.delete(pet)
+        db.session.commit()
+        return jsonify({'message': 'Pet deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
