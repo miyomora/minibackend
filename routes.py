@@ -1,6 +1,6 @@
 from flask import request, jsonify
 from app import app, db
-from models import User, Pet, Booking, Boarding, Consultation, Petm, SellPet
+from models import User, Booking, Boarding, Consultation, Petm, SellPet
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
@@ -50,66 +50,66 @@ def login():
     
     return jsonify({'message': 'Invalid credentials'}), 401
 
-@app.route('/pets', methods=['POST'])
-@jwt_required()
-def add_pet():
-    data = request.get_json()
+# @app.route('/pets', methods=['POST'])
+# @jwt_required()
+# def add_pet():
+#     data = request.get_json()
 
-    if not all(k in data for k in ['name', 'species', 'breed', 'contact_email']):
-        return jsonify({'error': 'Missing required fields'}), 400
+#     if not all(k in data for k in ['name', 'species', 'breed', 'contact_email']):
+#         return jsonify({'error': 'Missing required fields'}), 400
 
-    try:
-        new_pet = Pet(
-            name=data['name'],
-            species=data['species'],
-            breed=data['breed'],
-            age=data.get('age'),
-            description=data.get('description'),
-            contact_email=data['contact_email'],
-            contact_phone=data.get('contact_phone')
-        )
+#     try:
+#         new_pet = Pet(
+#             name=data['name'],
+#             species=data['species'],
+#             breed=data['breed'],
+#             age=data.get('age'),
+#             description=data.get('description'),
+#             contact_email=data['contact_email'],
+#             contact_phone=data.get('contact_phone')
+#         )
 
-        db.session.add(new_pet)
-        db.session.commit()
+#         db.session.add(new_pet)
+#         db.session.commit()
 
-        return jsonify({'message': 'Pet added successfully!'}), 201
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+#         return jsonify({'message': 'Pet added successfully!'}), 201
+#     except Exception as e:
+#         db.session.rollback()
+#         return jsonify({'error': str(e)}), 500
 
-@app.route('/pets', methods=['GET'])
-def get_pets():
-    pets = Pet.query.all()
-    pets_data = [
-        {
-            "id": pet.id,
-            "name": pet.name,
-            "species": pet.species,
-            "breed": pet.breed,
-            "age": pet.age,
-            "description": pet.description,
-            "contact_email": pet.contact_email,
-            "contact_phone": pet.contact_phone
-        }
-        for pet in pets
-    ]
-    return jsonify(pets_data), 200
+# @app.route('/pets', methods=['GET'])
+# def get_pets():
+#     pets = Pet.query.all()
+#     pets_data = [
+#         {
+#             "id": pet.id,
+#             "name": pet.name,
+#             "species": pet.species,
+#             "breed": pet.breed,
+#             "age": pet.age,
+#             "description": pet.description,
+#             "contact_email": pet.contact_email,
+#             "contact_phone": pet.contact_phone
+#         }
+#         for pet in pets
+#     ]
+#     return jsonify(pets_data), 200
 
-@app.route('/pets/<int:pet_id>', methods=['DELETE'])
-@jwt_required()
-def delete_pet(pet_id):
-    pet = Pet.query.get(pet_id)
+# @app.route('/pets/<int:pet_id>', methods=['DELETE'])
+# @jwt_required()
+# def delete_pet(pet_id):
+#     pet = Pet.query.get(pet_id)
 
-    if not pet:
-        return jsonify({'error': 'Pet not found'}), 404
+#     if not pet:
+#         return jsonify({'error': 'Pet not found'}), 404
 
-    try:
-        db.session.delete(pet)
-        db.session.commit()
-        return jsonify({'message': 'Pet deleted successfully'}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+#     try:
+#         db.session.delete(pet)
+#         db.session.commit()
+#         return jsonify({'message': 'Pet deleted successfully'}), 200
+#     except Exception as e:
+#         db.session.rollback()
+#         return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/bookings', methods=['POST'])
@@ -376,4 +376,21 @@ def delete_sell_pet(pet_id):
         db.session.rollback()
         print(f"Error in delete_sell_pet: {str(e)}")
         return jsonify({'error': str(e)}), 500
-    
+
+@app.route('/api/users', methods=['GET'])
+def get_users():
+    try:
+        users = User.query.order_by(User.created_at.asc()).all()
+        return jsonify([{
+            'id': user.id,
+            'name': user.name,
+            'email': user.email,
+            'role': user.role,
+            'created_at': user.created_at.isoformat()
+        } for user in users]), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+@app.route('/api/users/<int:id>', methods=['DELETE'])
+def delete_user(id):
+    # Logic to delete user with given id
+    return jsonify({"message": "User deleted successfully"}), 200
