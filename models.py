@@ -168,3 +168,32 @@ class Petm(db.Model):
             'aggression': self.aggression_level,
             'imageName': self.image_name
         }
+    
+class SellPet(db.Model):
+    __tablename__ = 'sell_pets'
+    id = db.Column(db.BigInteger, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    species = db.Column(db.String(50), nullable=False)
+    breed = db.Column(db.String(100), nullable=False)
+    age = db.Column(db.Integer, nullable=False, default=0)
+    description = db.Column(db.Text, nullable=True)
+    image_name = db.Column(db.String(255), nullable=True)
+    contact_email = db.Column(db.String(120), nullable=False)
+    contact_phone = db.Column(db.String(20), nullable=True)
+    price = db.Column(db.Integer, nullable=False)  # New price field
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'species': self.species,  # Changed from 'type' to match sell.js
+            'breed': self.breed,
+            'age': self.age,
+            'description': self.description,
+            'image_name': self.image_name,
+            'contact_email': self.contact_email,
+            'contact_phone': self.contact_phone,
+            'price': self.price,
+            'images': [f"http://127.0.0.1:5000/static/uploads/{self.image_name}"] if self.image_name else []
+        }

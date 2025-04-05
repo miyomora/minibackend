@@ -1,6 +1,6 @@
 from flask import request, jsonify
 from app import app, db
-from models import User, Pet, Booking, Boarding, Consultation, Petm
+from models import User, Pet, Booking, Boarding, Consultation, Petm, SellPet
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
@@ -314,5 +314,66 @@ def delete_petm(petm_id):
     except Exception as e:
         db.session.rollback()
         print(f"Error in delete_petm: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+    
+@app.route('/api/sell_pets', methods=['POST'])
+def create_sell_pet():
+    try:
+        if not all(k in request.form for k in ['id', 'name', 'species', 'breed', 'contact_email', 'price']):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        image_name = None
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                unique_filename = f"{request.form['id']}_{filename}"
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                file.save(file_path)
+                image_name = unique_filename
+
+        sell_pet = SellPet(
+            id=int(request.form['id']),
+            name=request.form['name'],
+            species=request.form['species'],
+            breed=request.form['breed'],
+            age=int(request.form.get('age', 0)),
+            description=request.form.get('pet-desc'),
+            image_name=image_name,
+            contact_email=request.form['contact_email'],
+            contact_phone=request.form.get('contact_phone'),
+            price=int(request.form['price'])  # New price field
+        )
+        db.session.add(sell_pet)
+        db.session.commit()
+        return jsonify(sell_pet.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in create_sell_pet: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/sell_pets', methods=['GET'])
+def get_sell_pets():
+    try:
+        sell_pets = SellPet.query.order_by(SellPet.created_at.asc()).all()
+        return jsonify([pet.to_dict() for pet in sell_pets]), 200
+    except Exception as e:
+        print(f"Error in get_sell_pets: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/sell_pets/<int:pet_id>', methods=['DELETE'])
+def delete_sell_pet(pet_id):
+    try:
+        sell_pet = SellPet.query.get_or_404(pet_id)
+        if sell_pet.image_name:
+            image_path = os.path.join(app.config['UPLOAD_FOLDER'], sell_pet.image_name)
+            if os.path.exists(image_path):
+                os.remove(image_path)
+        db.session.delete(sell_pet)
+        db.session.commit()
+        return jsonify({'message': 'Pet deleted'}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in delete_sell_pet: {str(e)}")
         return jsonify({'error': str(e)}), 500
     
