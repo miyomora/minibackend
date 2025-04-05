@@ -1,4 +1,4 @@
-from app import db
+from app import db, app
 from datetime import datetime
 
 # User Model
@@ -77,3 +77,45 @@ class Pet(db.Model):
 #     message = db.Column(db.Text, nullable=False)
 #     is_read = db.Column(db.Boolean, default=False)
 #     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+class Booking(db.Model):
+    __tablename__ = 'bookings'
+    id = db.Column(db.BigInteger, primary_key=True)
+    pet_name = db.Column(db.String(100), nullable=False)
+    service = db.Column(db.String(50), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    time = db.Column(db.String(5), nullable=False)
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'petName': self.pet_name,
+            'service': self.service,
+            'date': self.date.isoformat(),
+            'time': self.time,
+            'notes': self.notes
+        }
+
+class Boarding(db.Model):
+    __tablename__ = 'boardings'
+    id = db.Column(db.BigInteger, primary_key=True)
+    pet_name = db.Column(db.String(100), nullable=False)
+    package_type = db.Column(db.String(50), nullable=False)
+    check_in = db.Column(db.Date, nullable=False)
+    check_out = db.Column(db.Date, nullable=False)
+    special_needs = db.Column(db.Text, nullable=True)
+    total_price = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'petName': self.pet_name,
+            'packageType': self.package_type,
+            'checkIn': self.check_in.isoformat(),
+            'checkOut': self.check_out.isoformat(),
+            'specialNeeds': self.special_needs,
+            'totalPrice': self.total_price
+        }
