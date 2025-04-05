@@ -8,6 +8,17 @@ import os
 load_dotenv()
 
 app = Flask(__name__)
+UPLOAD_FOLDER = os.path.join(app.root_path, 'static/uploads')
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# Allowed file extensions
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+# Ensure upload directory exists with error handling
+try:
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER)
+except OSError as e:
+    print(f"Error creating upload directory {UPLOAD_FOLDER}: {e}")
 CORS(app, origins=["http://127.0.0.1:5500"])
 
 # Configure PostgreSQL Database

@@ -1,9 +1,17 @@
 from flask import request, jsonify
 from app import app, db
-from models import User, Pet, Booking, Boarding
+from models import User, Pet, Booking, Boarding, Consultation, Petm
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from datetime import datetime
+import os
+
+# Define allowed_file function to check file extensions
+def allowed_file(filename):
+    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
+
 
 jwt = JWTManager(app)
 
@@ -197,4 +205,114 @@ def delete_boarding(boarding_id):
         db.session.rollback()
         print(f"Error in delete_boarding: {str(e)}")
         return jsonify({'error': str(e)}), 500    
+    
+@app.route('/api/consultations', methods=['POST'])
+def create_consultation():
+    try:
+        data = request.get_json()
+        if not all(k in data for k in ['id', 'vetId', 'vetName', 'petType', 'petAge', 'symptoms', 'consultDate', 'timeSlot']):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        consultation = Consultation(
+            id=data['id'],
+            vet_id=data['vetId'],
+            vet_name=data['vetName'],
+            pet_type=data['petType'],
+            pet_age=data['petAge'],
+            symptoms=data['symptoms'],
+            consult_date=datetime.strptime(data['consultDate'], '%Y-%m-%d').date(),
+            time_slot=data['timeSlot'],
+            status=data.get('status', 'scheduled')
+        )
+        db.session.add(consultation)
+        db.session.commit()
+        return jsonify(consultation.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in create_consultation: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/consultations', methods=['GET'])
+def get_consultations():
+    try:
+        consultations = Consultation.query.order_by(Consultation.consult_date.asc(), Consultation.time_slot.asc()).all()
+        return jsonify([consult.to_dict() for consult in consultations]), 200
+    except Exception as e:
+        print(f"Error in get_consultations: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/consultations/<int:consultation_id>', methods=['DELETE'])
+def delete_consultation(consultation_id):
+    try:
+        consultation = Consultation.query.get_or_404(consultation_id)
+        db.session.delete(consultation)
+        db.session.commit()
+        return jsonify({'message': 'Consultation cancelled'}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in delete_consultation: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+    
+@app.route('/api/petm', methods=['POST'])
+def create_petm():
+    try:
+        # Check for required fields in form data
+        if not all(k in request.form for k in ['id', 'name', 'species', 'breed', 'age', 'vaccination', 'aggression']):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        # Handle file upload
+        image_name = None
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                # Use a unique filename to avoid overwrites (e.g., prepend ID)
+                unique_filename = f"{request.form['id']}_{filename}"
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                file.save(file_path)
+                image_name = unique_filename  # Store just the filename (or full path if needed)
+
+        petm = Petm(
+            id=int(request.form['id']),
+            name=request.form['name'],
+            species=request.form['species'],
+            breed=request.form['breed'],
+            age=int(request.form['age']),
+            vaccination_status=request.form['vaccination'],
+            aggression_level=request.form['aggression'],
+            image_name=image_name
+        )
+        db.session.add(petm)
+        db.session.commit()
+        return jsonify(petm.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in create_petm: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/petm', methods=['GET'])
+def get_petm():
+    try:
+        petms = Petm.query.order_by(Petm.created_at.asc()).all()
+        return jsonify([petm.to_dict() for petm in petms]), 200
+    except Exception as e:
+        print(f"Error in get_petm: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/petm/<int:petm_id>', methods=['DELETE'])
+def delete_petm(petm_id):
+    try:
+        petm = Petm.query.get_or_404(petm_id)
+        # Optionally delete the image file
+        if petm.image_name:
+            image_path = os.path.join(app.config['UPLOAD_FOLDER'], petm.image_name)
+            if os.path.exists(image_path):
+                os.remove(image_path)
+        db.session.delete(petm)
+        db.session.commit()
+        return jsonify({'message': 'Pet deleted'}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in delete_petm: {str(e)}")
+        return jsonify({'error': str(e)}), 500
     
