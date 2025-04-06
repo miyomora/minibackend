@@ -1,11 +1,12 @@
 from flask import request, jsonify
 from app import app, db
-from models import User, Booking, Boarding, Consultation, Petm, SellPet
+from models import User, Booking, Boarding, Consultation, Petm, SellPet, Admin
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from datetime import datetime
 import os
+import bcrypt
 
 # Define allowed_file function to check file extensions
 def allowed_file(filename):
@@ -394,3 +395,32 @@ def get_users():
 def delete_user(id):
     # Logic to delete user with given id
     return jsonify({"message": "User deleted successfully"}), 200
+
+
+
+# Handle login request
+@app.route('/admin-login-page')
+def login_page():
+    return app.send_static_file('adminlogin.html')
+
+# Handle login request
+@app.route('/api/admin-authenticate', methods=['POST'])
+def authenticate_admin():
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
+
+    if not email or not password:
+        return jsonify({'message': 'Email and password are required'}), 400
+
+    admin = Admin.query.filter_by(email=email).first()
+    if admin and bcrypt.checkpw(password.encode('utf-8'), admin.password.encode('utf-8')):
+        return jsonify({'message': 'Login successful', 'redirect': 'http://127.0.0.1:5500/admin.html'}), 200
+    else:
+        return jsonify({'message': 'Invalid email or password'}), 401
+
+# Serve the admin panel (protected route)
+@app.route('/admin-dashboard')
+def admin_dashboard():
+    # Add authentication check here in a real app
+    return app.send_static_file('admin.html')

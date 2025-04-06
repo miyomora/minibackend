@@ -20,7 +20,7 @@ try:
 except OSError as e:
     print(f"Error creating upload directory {UPLOAD_FOLDER}: {e}")
 CORS(app, origins=["http://127.0.0.1:5500"])
-
+# CORS(app, resources={r"/api/*": {"origins": "http://127.0.0.1:5500"}})
 # Configure PostgreSQL Database
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = os.getenv('SQLALCHEMY_TRACK_MODIFICATIONS') == 'True'
